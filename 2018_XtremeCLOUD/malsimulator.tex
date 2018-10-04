@@ -106,7 +106,7 @@ The rationale stems from the common knowledge that any database application envi
 \textbf{Paper Outline.}
 Section~\ref{sec:background} provides a short overview of the MonetDB architecture.% and the projects involved.
 Section~\ref{sec:malcolm} introduces the components and algorithms for our resource estimator {\sc malcom}.
-Section~\ref{sec:evaluation} illustrates the effectiveness of our approach in two use cases: TPC-H and Air Traffic.
+Section~\ref{sec:evaluation} illustrates the effectiveness of our approach in two use cases: TPC-H and air traffic.
 
 \section{Background}
 \label{sec:background} 
@@ -185,7 +185,7 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
 \textbf{JSON object at ``start'' time}    &   \textbf{JSON object at ``done'' time}                                      \\
 \hline                                                                                                                                 
 \renewcommand{\arraystretch}{0.9}\renewcommand{\tabcolsep}{3pt}\{``source'':``trace'', &   \{``source'':``trace'',       \\
- ~{\color{red}``clk'':1767476753919,}                     &   ~ {\color{red}``clk'':1767476754150,}                      \\
+% ~{\color{red}``clk'':1767476753919,}                     &   ~ {\color{red}``clk'':1767476754150,}                      \\
  ~{\color{red}``ctime'':1528314717302449,}                &   ~ {\color{red}``ctime'':1528314717302680,}                 \\
 % ~``thread'':8,                                           &   ~ ``thread'':8,                                            \\
 % ~``function'':``user.s4\_2'',                            &   ~ ``function'':``user.s4\_2'',                             \\
@@ -200,23 +200,22 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
  ~``size'':0,                                             &   ~ ``size'':0,                                              \\
  ~{\color{red}``nvcsw'':1,}                               &   ~                                                          \\
  ~``stmt'':"X\_17…:= \textbf{algebra.projection}(…);'',   &   ~ ``stmt'':"X\_17…:= \textbf{algebra.projection}(…);'',    \\
- ~``short'':"X\_17[0]:= projection(…, …)'',               &   ~ ``short'':"X\_17[0]:= projection(…, …)'',                \\
- ~``prereq'':[4,8],                                       &   ~ ``prereq'':[4,8],                                        \\
+% ~``short'':"X\_17[0]:= projection(…, …)'',               &   ~ ``short'':"X\_17[0]:= projection(…, …)'',                \\
+% ~``prereq'':[4,8],                                       &   ~ ``prereq'':[4,8],                                        \\
  ~\textbf{``ret"}:[\{                                     &   ~ ``ret'':[\{                                              \\
  ~   ``index'':``0'',                                     &   ~    ``index'':``0'',                                      \\
  ~   ``name'':"X\_17'',                                   &   ~    ``name'':"X\_17'',                                    \\
  ~   ``alias'':``sys.\_tables.id'',                       &   ~    ``alias'':``sys.\_tables.id'',                        \\
  ~   ``type'':``bat[:int]'',                              &   ~    ``type'':``bat[:int]'',                               \\
  ~                                                        &   ~ {\color{red}``kind'':``transient'',}                     \\
- ~   {\color{red}``bid'':``0'',}                          &   ~    {\color{red}``bid'':``837'',}                         \\
+% ~   {\color{red}``bid'':``0'',}                          &   ~    {\color{red}``bid'':``837'',}                         \\
  ~   {\color{red}``count'':``0'',}                        &   ~    {\color{red}``count'':``92'',}                        \\
  ~   {\color{red}``size'':0,}                             &   ~    \textbf{\color{red}``size'':368,}                     \\
- ~   \textbf{``eol'':0}                                   &   ~    \textbf{``eol'':0}                                    \\
- ~  \}],                                                  &   ~   \}],                                                   \\
+ ~   \textbf{``eol'':0}\}],                               &   ~    \textbf{``eol'':0}\}],                                \\
  ~\textbf{``arg"}:[\{                                     &   ~ \textbf{``arg"}:[\{                                      \\
  ~~~~   ``index'':``1'',                                  &   ~~~~    ``index'':``1'',                                   \\
  ~~~~   ``name'':"C\_5'',                                 &   ~~~~    ``name'':"C\_5'',                                  \\
- ~~~~   ``type'':``bat[:oid]'',                           &   ~~~~    ``type'':``bat[:oid]'',                            \\
+% ~~~~   ``type'':``bat[:oid]'',                           &   ~~~~    ``type'':``bat[:oid]'',                            \\
  ~~~~   ``kind'':``transient'',                           &   ~~~~    ``kind'':``transient'',                            \\
  ~~~~   ``bid'':``863'',                                  &   ~~~~    ``bid'':``863'',                                   \\
  ~~~~   ``count'':``92'',                                 &   ~~~~    ``count'':``92'',                                  \\
@@ -315,7 +314,7 @@ Note that we only consider bulk operators here (i.e. taking columns as operands)
 
 \subsection{Load instructions}
 %\Skip\textbf{Data Loading Operators.}
-A \texttt{\small bind} instruction loads (or memory maps) a column into memory, thus the memory footprint is the size of the column.
+A \texttt{\small bind} instruction loads (or memory maps) a column into memory, thus the resturn size is the size of the column.
 This is a worst case assumption, because in practice not all of the column needs to be loaded.
 %For example, if the column is sorted and we perform a range select using a binary search
 %then the size of the result determines the footprint.
@@ -325,9 +324,9 @@ This is a worst case assumption, because in practice not all of the column needs
 %\Skip\textbf{Arithmetic Operators.}
 These operators always return the same number of values as their operands (MonetDB requires both operands to have equal size).
 However, the data type of the output can be a larger-sized data type than both operands to capture possible overflow.
-Hence, their memory footprint is computed as:
+Hence, their result size is computed as:
 \begin{verb}
-arith_mfp = sizeOf(arg1) * sizeof(ret.data_type)
+arith.rsize = sizeOf(arg1) * sizeof(ret.datatype)
 \end{verb}
 
 \subsection{Aggregate Operators}
@@ -338,7 +337,7 @@ The most general signature of these operators takes two operands: \texttt{\small
 The output size of an aggregate operator is computed by multiplying the number of unique values in \texttt{\small arg2} with the size of the return data type.
 %(due to automatic type promotion in MonetDB for possible overflow, the size of the return data type can be bigger than that of input data type):
 \begin{verb}
-aggr_ret.size = COUNT(DISTINCT arg2) * sizeof(ret.data_type)
+aggr.rsize = COUNT(DISTINCT arg2) * sizeof(ret.datatype)
 \end{verb}
 
 \subsection{Limit Operators}
@@ -347,7 +346,7 @@ This group includes \texttt{\small firstn} and \texttt{\small sample}.
 They return at most $N$ values from its input column \texttt{\small arg} as specified by the limit.
 Hence, their output size is computed as:
 \begin{verb}
-limit_ret.size = MIN(COUNT(arg), N) * sizeof(arg.data_type)
+limit.rsize = MIN(COUNT(arg), N) * sizeof(arg.datatype)
 \end{verb}
 
 \subsection{Grouping Operators}
@@ -360,50 +359,42 @@ The data type of \texttt{\small groups} and \texttt{\small extents} are both \te
 The number of values in \texttt{\small extends} and \texttt{\small histo} is the same, and is estimated using a simple kNN algorithm based on the statistics of previous queries or basic statistics of the involved columns.
 Putting everything together, the total output size of a grouping operator is estimated as:
 \begin{verb}
-group_ret.size = COUNT(arg1) * sizeof(OID) +
+group.rsize = COUNT(arg1) * sizeof(OID) +
   estimate_nr_groups(arg1) * (sizeof(OID) + sizeof(LNG))
 \end{verb}
 
 \subsection{Set Operators}
 %\Skip\textbf{Set Operators.}
-The current estimations for the set operators use heuristics to compute an upper bound of the result size.
-
-\texttt{\small UNION ALL} simply returns a concatenation of its two input columns \texttt{\small arg1} and \texttt{\small arg2}, so its output size can be precisely computed with:
+For the set operators we mostly compute an upper bound of the result size using heuristics:
 \begin{verb}
-unionall_ret.size = (COUNT(arg1) + COUNT(arg2)) * 
-  sizeof(arg1.data_type)
+unionall.rsize = sizeof(arg1.datatype) * 
+  (COUNT(arg1) + COUNT(arg2))
+union.rsize = sizeof(arg1.datatype) *
+  (COUNT(DISTINCT arg1) + COUNT(DISTINCT arg2))
+ntsct.rsize = sizeof(arg1.datatype) *
+  MIN(COUNT(DISTINCT arg1) + COUNT(DISTINCT arg2))
+xcpt_all.size = sizeof(arg1.datatype) * COUNT(arg1)
+xcpt.size = sizeof(arg1.datatype) * COUNT(DISTINCT arg1)
 \end{verb}
 
-\texttt{\small UNION} returns a concatenation of its two input columns \texttt{\small arg1} and \texttt{\small arg2} with duplicate elimination.
-We use the following formula to compute an upper bound of its result size (since it does not exclude unique values in both \texttt{\small arg1} and \texttt{\small arg2}):
-\begin{verb}
-union_ret.size = (COUNT(DISTINCT arg1) + 
-  COUNT(DISTINCT arg2)) * sizeof(arg1.data_type)
-\end{verb}
+Both \texttt{\small UNION} and \texttt{\small UNION ALL} return a concatenation of their two input columns \texttt{\small arg1} and \texttt{\small arg2}, except that \texttt{\small UNION} eliminates the duplicates in its result.
+Hence, \texttt{\small unionall.rsize} is the precise result size of a \texttt{\small UNION ALL}, while \texttt{\small union.rsize} is an upper bound of the result size of a \texttt{\small UNION}, because its computation does not exclude unique values that exist in both \texttt{\small arg1} and \texttt{\small arg2}.
 
-\texttt{\small INTERSECT} returns values that exist in both of its input columns \texttt{\small arg1} and \texttt{\small arg2} with duplicates eliminated.
-We use the following formula to compute an upper bound of its result size (since it does not exclude unique values that are only in \texttt{\small arg1} or only in \texttt{\small arg2}):
-\begin{verb}
-union_ret.size = MIN(COUNT(DISTINCT arg1) + 
-  COUNT(DISTINCT arg2)) * sizeof(arg1.data_type)
-\end{verb}
+\texttt{\small INTERSECT} returns values that exist in both its input columns \texttt{\small arg1} and \texttt{\small arg2} with duplicates eliminated.
+Hence, \texttt{\small ntsct.rsize} is an upper bound of the result size, as its formula does not exclude unique values that are only in \texttt{\small arg1} or only in \texttt{\small arg2}.
 
-\texttt{\small EXCEPT ALL} returns all values that are in its first input column \texttt{\small arg1} but not in its second input column \texttt{\small arg2}.
-\texttt{\small EXCEPT} does the same thing as \texttt{\small EXCEPT ALL}, but also eliminates duplicates.
-We use the following formula to compute an upper bound of their result size (the result again is an upper bound, since the computation does not exclude (unique) values that also exist in \texttt{\small arg2}):
-\begin{verb}
-excpt_all.size = COUNT(arg1) * sizeof(arg1.data_type)
-excpt.size = COUNT(DISTINCT arg1) * sizeof(arg1.data_type)
-\end{verb}
+Both \texttt{\small EXCEPT} and \texttt{\small EXCEPT ALL} return all values that are in its first input column \texttt{\small arg1} but not in the second column \texttt{\small arg2}.
+In addition, \texttt{\small EXCEPT} eliminates duplicates.
+Therefore, both \texttt{\small xcpt\_all.size} and \texttt{\small xcpt.size} are upper bounds of their respective result sizes, since their computations does not exclude (unique) values that also exist in \texttt{\small arg2}.
 
 \subsection{Projection Operators}
 %\Skip\textbf{Projection Operators.}
 Projection operators extract a small part of a column.
 The arguments are a candidate list \texttt{\small cand} containing the OIDs of the to-be-projected values and a reference to the (persistent) column \texttt{\small col}.
-The number of elements in the output equals the number of elements of the candidate list.% and the time is based on the random access and copying the data around.
+The number of elements in the output equals the number of elements of the candidate list. %and the time is based on the random access and copying the data around.
 Hence, their exact output size is computed as:
 \begin{verb}
-proj_ret.size = COUNT(cand) * sizeof(col.data_type)
+proj.rsize = COUNT(cand) * sizeof(col.datatype)
 \end{verb}
 
 %In some weird cases, the projection instruction returns str(copies from heap) instead of ids, which makes hard to predict.
@@ -419,10 +410,10 @@ In our model, we keep the results of a series of actual filter operations, so as
 
 %MonetDB has numerous select operators to support filtering on different data types, range or point select, with a lower-/upper-bound or both, etc.
 The select operators are abstracted into a single template with three operands \texttt{\small sel(col, range, op)}, where \texttt{\small col} is a reference to the (persistent) column, \texttt{\small range} is the selection range (low, high), and \texttt{\small op} is the comparison operator ($<$, $>$, $<=$, $>=$, etc).
-In our model, we keep a dictionary of all the selections executed so far in the format of this signature, but with an extra value \texttt{\small cnt} to denote the number of values selected.
+In our model, we keep a dictionary of all the selections executed so far in the format of this signature, with an extra attribute \texttt{\small cnt} to denote the number of values selected.
 
 The estimation for a selection operator \texttt{\small sel(col, range, op)} works as follows.
-First, we find in the dictionary records of all previous selections on the same \texttt{\small col} with the same \texttt{\small op}.
+First, we find in the \texttt{\small dictionary} records of all previous selections on the same \texttt{\small col} with the same \texttt{\small op}.
 Then, we use a $k$ nearest neighbour (kNN) procedure to find the 5 nearest records based on the selection \texttt{\small range}.
 Next, for each of the 5 records, we extrapolate the number of selected values based on the selectivity and input column size. 
 Finally, we compute the estimated memory footprint of this selection as the average of the 5 extrapolations, multiplied by the data size of the input column.
@@ -432,7 +423,7 @@ extrap = 0
 for dict in kNN(dictionary, sel, 5)
   extrap += dict.cnt * (COUNT(sel.col) / COUNT(dict)) * 
             (sel.range / dict.range)
-sel_ret.size = extrap/5 * sizeof(sel.col.data_type)
+sel.rsize = extrap/5 * sizeof(sel.col.datatype)
 \end{verb}
 
 \subsection{Join Operators}
@@ -442,7 +433,7 @@ The \texttt{\small cross product} operator of MonetDB takes two data columns as 
 The two OID columns together denote how the values from the input columns are aligned in the cross product result.
 So the exact output size of a cross product is computed as:
 \begin{verb}
-cp_ret.size = COUNT(col1) * COUNT(col2) * sizeof(OID) * 2
+cp.rsize = COUNT(col1) * COUNT(col2) * sizeof(OID) * 2
 \end{verb}
 
 The estimation model for the other join operators is similar to that of selection operators.
@@ -457,7 +448,7 @@ extrap = 0
 for dict in kNN(dictionary, join, 5)
   extrap += dict.cnt * (COUNT(join.col1) / COUNT(dict.col1)) * 
                        (COUNT(join.col2) / COUNT(dict.col2))
-sel_ret.size = extrap/5 * sizeof(OID) * 2
+sel.rsize = extrap/5 * sizeof(OID) * 2
 \end{verb}
 
 \Skip\textbf{Optimizer Simulator Architecture.}
@@ -468,36 +459,45 @@ The full-blown version uses the same scheduling method as within the MonetDB cod
 \section{Evaluation}
 \label{sec:evaluation}
 In this section we discuss the results obtained with the {\sc malcolm} prototype.
-To conduct our experiments we used both TPC-H and the Airtraffic benchmarks.
+For our experiments we used both TPC-H and the air traffic benchmarks.
 The former is the baseline against which most database systems are evaluated.
 Its major weakness is the uniform data distribution.
-Although this simplifies analysis of the quality of a space predictor, it is not representative of real-life workloads.
-Therefore, we also use the Air Traffic benchmark~\footnote{\url{github.com/MonetDBSolutions/airtraffic-benchmark}}, which consists of a single table with $>$120 M rows and 100 columns of flight information.
+Although TPC-H simplifies the analysis of the quality of a space predictor, it is not representative of real-life workloads.
+Therefore, we also use the air traffic benchmark\footnote{\url{github.com/MonetDBSolutions/airtraffic-benchmark}}, which consists of a single table with \textgreater 120M rows and 100 columns of flight information.
 The data in this benchmark is skewed.
 
 \subsection{TPC-H}
-To test {\sc malcolm} against TPC-H we created a query generator, which changes the parameters in the official benchmark.
-A key factor is to understand how long it takes before {\sc malcolm} has ``learned'' the data distribution and the estimation prediction.
-Therefore, we used a large collection of morphed queries and split it into two portions.
-One part is used to feed into the simulator to train the micro-models, the second part is used to assess their quality.
 
-Initial experiments led to the results shown in Figure~\ref{fig:tpch-q1-q6}.
-TPC-H Q1 is a simple large scan followed by an aggregation. The sole parameter is the value range.
+\begin{figure}[t!]
+	\centering
+	%\includegraphics[height=1in,width=3in]{Figures/Q1.png}
+	%\includegraphics[height=1in,width=3in]{Figures/Q6.png}
+	\includegraphics[width=0.95\columnwidth]{Figures/tpch.pdf}
+	\caption{TPC-H queries Q1 and Q6 prediction deviations
+		\label{fig:tpch-q1-q6}}
+\end{figure}
+
+To test {\sc malcolm} against TPC-H we created a query generator, which changes the parameters in the official benchmark queries.
+A key factor is to understand how long it takes before {\sc malcolm}'s prediction converges to the actual memory footprint.
+%Therefore, we used a large collection of morphed queries and split it into two portions: one is used by the simulator to train the micro-models, the other is used to assess their quality.
+As a training set for each query, we randomised every selection point and range to produce 200 random versions of the query.
+As a test set we used the original queries.
+
+Initial experiments led to the results such as shown in Figure~\ref{fig:tpch-q1-q6}, where the x-axis shows the number of training queries used and y-axis shows the deviation of the estimation from the actual footprint.
+Q1 is a simple large scan followed by an aggregation. The sole parameter is the value range.
 The experiment shows a steep learning curve, which can be attributed to the uniform distribution.
 However, it also results in a little over fitting.
+Q6 is also mostly a simple scan and aggregate query, but here the number of tuples are less.
+This experiment shows that {\sc malcolm} takes much longer to reach an almost perfect prediction of the memory footprint.
 
-As a training set for each query, we randomised every selection point and range, and produced 200 random versions of the query.
-As a test set we used the original query.
-
-In query 19 we observe a misprediction of 70\%.
-The reason is that the {\sc mal} algebra of this specific query consists of a lot of merge instructions, for which we output the sum of the two arguments, which in case of merging similar variables can lead to an almost 2$\times$ overestimation.
-This is the basic reason for the large error observed.
-\begin{verb}
-culprit:
-C_187 := algebra.thetaselect(X_178, "DELIVER IN PERSON", "==")
-X_191 := bat.mergecand(C_187, C_187)
-X_194 := bat.mergecand(X_191, C_187)
-\end{verb}
+%In query 19 we observed a misprediction of 70\%.
+%The reason is that the {\sc mal} algebra of this specific query consists of a lot of merge instructions, for which we output the sum of the two arguments, which in case of merging similar variables can lead to an almost 2$\times$ overestimation.
+%This is the basic reason for the large error observed:
+%\begin{verb}
+%C_187 := algebra.thetaselect(X_178, "DELIVER IN PERSON", "==")
+%X_191 := bat.mergecand(C_187, C_187)
+%X_194 := bat.mergecand(X_191, C_187)
+%\end{verb}
 %[Move queries to appendix]
 %\begin{verb}
 %select l_returnflag, l_linestatus,
@@ -515,9 +515,6 @@ X_194 := bat.mergecand(X_191, C_187)
 %order by l_returnflag, l_linestatus;
 %\end{verb}
 
-TPC-H query 6 is also mostly a simple scan and aggregate query, but here the number of tuples are less.
-This experiment that {\sc malcolm} takes much longer to reach an almost perfect prediction of the memory footprint.
-
 %\begin{verb}
 %select sum(l_extendedprice * l_discount) as revenue
 %from lineitem
@@ -527,59 +524,54 @@ This experiment that {\sc malcolm} takes much longer to reach an almost perfect 
 %  and l_quantity < 24;
 %\end{verb}
 
-\begin{figure}[t!]
-	\centering
-	\includegraphics[height=1in,width=3in]{Figures/Q1.png}
-	\includegraphics[height=1in,width=3in]{Figures/Q6.png}
-	\caption{TPC-H queries Q1 and Q6 prediction deviations
-		\label{fig:tpch-q1-q6}}
-\end{figure}
-
 \subsection{Air Traffic}
-The Air Traffic benchmark is a real-world example of  business intelligence application.
-Although it is represented by a single table, it is highly skewed and sparse.
+The air traffic benchmark is a real-world example of business intelligence application.
+The data is represented by a single table, and it is highly skewed and sparse.
 The queries are mostly simple select-group-aggregate, but given the table size still hard to process.
-Again we can see both an under- and an over-estimate that improves over time. Albeit it takes more queries to stabilize.
+Figure~\ref{fig:airtraffic-q4-q15} and Figure~\ref{fig:airtraffic-q10-q19} show some of the results.
+Again we can observe both some under- and over-estimations, which all improve over time.
+Albeit they take more queries to stabilise.
 %One immediate observation is that in this case it takes more queries to reach an optimal estimate.
 % One with a deviation close to zero.
-Figure ~\ref{fig:airtraffic-q4-q15} for query Q4 and Q15 also illustrates how {\sc malcolm} not necessarily improve monotonic.
-Of course, this is a result of the actual query load.
+The graphs of Q04, Q15 and Q19 also illustrates how {\sc malcolm} not necessarily improve monotonic.
+This is most probably due to the actual query load.
 
 \begin{figure}[t!]
 	\centering
-	\includegraphics[height=2in,width=3in]{Figures/Q4-15.png}
-	\caption{Air Traffic query 4 and 15
+	\includegraphics[height=2in,width=3in]{Figures/Q4-15.pdf}
+	\caption{Air traffic queries 4 and 15
 		\label{fig:airtraffic-q4-q15}}
 \end{figure}
 
 \begin{figure}[t!]
 	\centering
-	\includegraphics[height=2in,width=3in]{Figures/Q10-19.png}
-	\caption{Air Traffic query10 and 19
+	\includegraphics[height=2in,width=3in]{Figures/Q10-19.pdf}
+	\caption{Air traffic queries 10 and 19
 		\label{fig:airtraffic-q10-q19}}
 \end{figure}
 
 \section{Related work}
 The approach taken in this project can best be compared with the long tradition in database query optimisers and database design wizards.
-They all collect query traces from an actual production system and use them to derive e.g. an optimal set of search accelerators \cite{DBLP:conf/vldb/ChaudhuriN07}.
+They all collect query traces from an actual production system and use them to derive e.g. an optimal set of search accelerators~\cite{DBLP:conf/vldb/ChaudhuriN07}.
 This process seeks a balance between index creation and maintenance, but primarily deals with performance optimisation.
 The memory footprint is of less concern.
-Alternatively, it extends the work on gathering query traces to (semi) automatically improve the cost model for query optimisation \cite{DBLP:journals/ibmsj/MarklLR03}.
+Alternatively, it extends the work on gathering query traces to (semi-)automatically improve the cost model for query optimisation~\cite{DBLP:journals/ibmsj/MarklLR03}.
 A better statistics improves both performance and resource use.
-All these systems are focused on a relative small and fixed compute cluster or database  appliance.
+All these systems are focused on a relative small and fixed compute cluster or database appliance.
 
-In a more recent project \cite{DBLP:journals/pvldb/DingDWCN18} the authors gather sub-plans from the query trace log and use it as the building block for new queries.
-They show that re-use of good plans, i.e. based on past behaviour, leads to both a faster optimisation step and overall better performance. {\sc malcolm} does not address the optimiser itself, but assumes that a physical plan has already been produced.
-It merely determines which virtual machine can handle it comfortably.
+In a more recent project~\cite{DBLP:journals/pvldb/DingDWCN18} the authors gather sub-plans from the query trace log and use it as the building block for new queries.
+They show that reuse of good plans, i.e. based on past behaviour, leads to both a faster optimisation step and overall better performance.
+{\sc malcolm} does not address the optimiser itself, but assumes that a physical plan has already been produced.
+It merely determines which virtual machine can handle the plan comfortably.
 
-\section{Summary and outlook\label{summary}} 
+\section{Summary and Outlook\label{summary}} 
 %In this paper we proposed a novel resource allocation technique for a database engine using resilient intermediates.
-The {\sc malcolm} prototype is a crucial tool in the design of Cloud-based database management solution.
+The {\sc malcolm} prototype is a crucial tool in the design of cloud-based database management solution.
 The initial results are promising, a rather low number of queries are sufficient to get a good memory footprint estimate.
 
 In the near future, we plan to extend {\sc malcolm} to also look at the memory footprint in relationship of the parallel execution.
 %This should lead to a lower bound on the memory footprint at the cost of running slower.
-Both memory footprint and degree of parallelism enables the user to optimise his/her system based on dollar/response times.
+Both memory footprint and degree of parallelism enables users to optimise their systems based on costs or response times.
 
 \section*{Acknowledgments}
 %\Skip\textbf{Acknowledgments}
