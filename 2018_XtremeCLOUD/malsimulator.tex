@@ -19,7 +19,7 @@
 \usepackage{color}
 \usepackage{url}
 
-\usepackage[english]{babel} % otherwise, \cite doesn't work with sig-alternate/acm_proc_article-sp
+%\usepackage[english]{babel} % otherwise, \cite doesn't work with sig-alternate/acm_proc_article-sp
 \usepackage{txfonts}
 %\usepackage{multiFloats}
 
@@ -55,97 +55,93 @@
 \IEEEauthorblockA{
 \textit{MonetDB Solutions}\\
 Amsterdam, The Netherlands \\
-\textless lastname\textgreater@monetdbsolutions.com}
+\textit{\textless lastname\textgreater}@monetdbsolutions.com}
 }
 
 \maketitle
 
 \begin{abstract} 
 %What is the market pitch? 
-Scale-out of big data analytics applications often does not pay off due to the poor response time performance and the bill ticking for a longer time on a resource limited machine.
-In a stable DBMS workload environment it helps to maintain several virtual machines hosting part of the database, so that users can send their tasks to those machines that have the best price/performance characteristics.
-This, however, requires a method to learn over time which VM should be used for a given query, and the technology needed to do this is the focus of this paper.
+Scale-out of big data analytics applications often does not pay off due to the poor performance in response time  and the increasing bill due to a longer execution time on a resource limited machine.
+To enable a stable DBMS workload environment it helps to maintain several virtual machines hosting part of the database, so that users can send their tasks to those machines that have the best price/performance characteristics.
+This, however, requires a method to decide which VM should be used for a given query, and the technology needed to do this is the focus of this paper.
 \end{abstract} 
 
 \section{Introduction}
 \label{Introduction} 
-Since its inception, database designers have keenly looked at the opportunities to use large, distributed processing platforms. Cluster-based products are readily available, such as in appliance products from Oracle Exadata, SQL Parallel Data Warehouse, IBM Blu and Teradata, but are often limited to a few tens of compute nodes.
-A plethora of research activities have shown that in all but the simplest cases, achieving a good performance is at least  hard, especially when a query involves joins spread over multiple compute nodes and require an expensive data exchange. 
+Since its inception, database designers have keenly looked at the opportunities to use large, distributed processing platforms. Cluster-based products are readily available, such as in appliance products from Oracle Exadata, SQL Parallel Data Warehouse, IBM Blu and Teradata, but they are often limited to a few tens of compute nodes.
+A plethora of research activities has shown that in all but the simplest cases achieving a good performance is at least hard, especially when a query involves joins spread over multiple compute nodes and thus requires expensive data exchange.
 
-The predominant way out nowadays, taken by NoSQL systems e.g. Casandra and Impala, is to address part of the problem space by focusing on select-aggregate queries.
-This choice has proven to be pivotal to support big data analytics in many real-world circumstances, as shown by the widespread use of Apache Apache Spark.
-The basic abstraction in Spark is a Resilient Distributed Dataset (RDD), which represents an immutable, partitioned collection of elements that can be operated on in parallel using operators, such as map, filter, persist and aggregates.
+The predominant way out nowadays, taken by NoSQL systems such as Casandra and Impala, is to address part of the problem space by focusing on select-aggregate queries.
+This choice has proven to be pivotal to support big data analytics in many real-world circumstances, as shown by the widespread use of Apache Spark.
+The basic abstraction in Spark is a Resilient Distributed Dataset (RDD), which represents an immutable and partitioned collection of elements that can be operated on in parallel using operators, such as map, filter, persist and aggregates.
 %Moreover, an RDD is the basic component to be exchanged between operators, threads, cores and machines.
 %In essence, an RDD can be seen as a relational table used for interoperability, an approach that can be traced back to Microsoft's ODE, which has been used for decades to exchange data between DBMS and its applications.
 %Similar functional abstractions can nowadays be found in R's Data Frames and Python Pandas.
 
-%explain the former tells it can be re-constructed upon need.
-
-Although in many cases it is easy to scale-up for improved response time, partitioning a database to benefit from a low Cloud service price tag and to overcome resource limitations of smaller machines is still a much sought after skill.
+Although in many cases it is easy to scale-up for improved response time, partitioning a database to benefit from a low cloud service price tag and to overcome resource limitations of smaller machines is still a much sought after skill.
 This product space is addressed by Snowflake and AWS Redshift.
-Snowflakes has been designed from a Cloud perspective, taking resource management as its key driving factor.
+Snowflake has been designed from a cloud perspective, taking resource management as its key driving factor.
 It conceptually provides every user with a complete copy of the database and relies on multi-level caching.
 AWS Redshift is an improved version of PostgreSQL, which has been further tuned towards better I/O bandwidth use.
 
-In this paper we take a fresh look at resource allocation to query processing in the context where intermediates in a query plan are fully materialised before passed on towards the next operator.
-This model fits not only the Apache Spark programming model, but also the query execution model of MonetDB.
-Resilient intermediates provides new avenue for query optimisation and scheduling as its underlying computation model is based on materialisation of all intermediate steps.
+In this paper we take a fresh look at resource allocation for query processing in the context where intermediates in a query plan are fully materialised before passed on towards the next operator.
+This model fits not only the Apache Spark programming model, but also the query execution model of our database system MonetDB({\small\url{www.monetdb.org}}).
+Resilient intermediates provide new avenues for query optimisation and scheduling as its underlying computation model is based on materialisation of all intermediate steps.
 %Furthermore, in most practical business analytic cases the past is a reasonable predictor of the future.
 
 The main contributions of this paper are
 \begin{itemize}
-	\item we develop a simulator to predict the memory footprint for queries based on resilient intermediates.
+	\item we develop a simulator, called {\sc malcom} to predict the memory footprint for queries based on resilient intermediates in MonetDB.
 	\item We demonstrate that the approach is robust against varying data distributions.
 	\item We demonstrate the opportunities using an extensive evaluation against TPC-H and a real-world data set.
 \end{itemize}
 
-The approach taken differs from traditional cost-based query optimisers deployed in distributed database systems by learning about the resource claims over time, i.e. after each query execution we have precise knowledge of the resources used.
+The approach taken here differs from traditional cost-based query optimisers deployed in distributed database systems by learning about actual resource claims over time, i.e. after each query execution we have precise knowledge of the resources used.
 This information can be harvested and used to predict future operations of a similar nature.
-The rational stems from the common knowledge that any database application environment has a limited number of `business transactions' or `business intelligence templates' where only some parameters are changed with each call.
+The rationale stems from the common knowledge that any database application environment has a limited number of `business transactions' or `business intelligence templates' where only some parameters are changed with each call.
 %This knowledge has been used in the past to drive development of DBA wizards~\cite{ms_wizards} for index selection by humans and self-tuning optimisers~\cite{IBM} to avoid expensive join paths in individual queries.
 
 \Skip
 \textbf{Paper Outline.}
-Section~\ref{sec:background} provides a short introduction to the MonetDB architecture and the projects involved.
-Section~\ref{sec:malcolm} introduces the components and algorithms for our resource estimator.
-Section~\ref{sec:evaluation} illustrates the effectiveness of the approach in two use-cases: TPC-H and Air Traffic.
+Section~\ref{sec:background} provides a short overview of the MonetDB architecture.% and the projects involved.
+Section~\ref{sec:malcolm} introduces the components and algorithms for our resource estimator {\sc malcom}.
+Section~\ref{sec:evaluation} illustrates the effectiveness of our approach in two use cases: TPC-H and Air Traffic.
 
 \section{Background}
 \label{sec:background} 
 In this section we introduce the query execution engine of MonetDB and the performance information available for our task.
 
-\subsection{Column Store MonetDB}
+\subsection{MonetDB Architecture}
 %Recap some MonetDB stuff on how queries are compiled.
-MonetDB is a widely used column store that internally uses resilient intermediates to break up query processing in well identifying steps. 
+MonetDB is a widely used columnar DBMS that internally uses resilient intermediates to break up query processing in well identifying steps. 
 A query plan is broken up into independent steps, glued together into a dataflow dependency graph.
-The dataflow graph is greedily consumed by the database kernel assigning a single core to a single operation.
-The resource pressure is kept at a minimal to trim down the degree of parallel processing when the main memory resource is heavily used.
+The dataflow graph is greedily consumed by the database kernel assigning a dedicated core to each operation.
+The resource pressure is kept at a minimum by trimming down the degree of parallel processing when the main memory resource is heavily used.
 % The system can be instructed to produce an event record for each completed instruction.
-% This provides a.o. insights into the input/output sizes and timing.  
+% This provides a.o. insights into the input/output sizes and timing.
+
 \begin{figure}[t]
     \centering\includegraphics[width=.95\columnwidth]{Figures/MDB_impl_arch.png}
     \caption{MonetDB query execution architecture.}
     \label{fig:mdb_arch}
 \end{figure}
 
-\subsection{Architecture}
+%\subsection{Architecture}
 Figure~\ref{fig:mdb_arch} illustrates the components of MonetDB to execute an SQL query.
 {\sc mal} (MonetDB Assembly Language) is the MonetDB internal language into which SQL queries are compiled and executed.
-The SQL Parser and {\sc mal} Optimiser deploy well-known rewriting rules (e.g. parallelization, and dead code/common expression/constant elimination) to reduce the intermediate sizes and processing time.
+The SQL Parser and {\sc mal} Optimiser deploy well-known rewriting rules (e.g. parallelisation, and dead code/common expression/constant elimination) to reduce the intermediate sizes and processing time.
 They do not rely on any cost-model or pre-computed statistics.
-%
-The middle layer (marked by a dashed box) is a sequence of specialized optimisers that morph the logical plan received from the SQL compiler into a physical execution plan expressed in {\sc mal} statements.
-The bottom layer (under the dashed box) contains the implementation of the relational operators (as {\sc mal} statements).
-Each operator takes as input the resilient intermediates produced by operators executed earlier or the persistent data on disk.
-The actual implementation is often quite complex, because each operator can be implemented in a multitude of ways.
-Since the operator has full knowledge on the actual parameters, it becomes easy to select the proper path.
-Some operators even perform a sampling step before making a choice on the preferred algorithm.
 
-To illustrate, consider the following simple SQL query:
-\begin{verb}
-SELECT COUNT(*) FROM _tables;
-\end{verb}
-This query is eventually translated into the following physical execution plan expressed in {\sc mal} statements, which are then executed by the MonetDB kernel:
+The middle layer (in the dashed box) is a sequence of specialised optimisers that morph a logical plan produced by the SQL compiler into a physical execution plan containing relational operators expressed in {\sc mal} statements.
+The bottom layer (under the dashed box) contains the implementation of the {\sc mal} statements.
+Each operator takes as input the resilient intermediates produced by operators executed before or the persistent data on disk.
+%The actual implementation is often quite complex, because each operator can be implemented in a multitude of ways.
+%Since the operator has full knowledge on the actual parameters, it becomes easy to select the proper path.
+%Some operators even perform a sampling step before making a choice on the preferred algorithm.
+
+As an example, consider this simple SQL query: \texttt{\small SELECT COUNT(*) FROM \_tables}, which is eventually translated into a physical execution plan in {\sc mal} statements to be executed by the MonetDB kernel.
+The box below show an excerpt of the plan:
 \begin{verb}
 C_5=<tmp_1524>[92]:bat[:oid] := sql.tid(
      "sys":str, "_tables":str);
@@ -162,20 +158,18 @@ sql.resultSet("sys.L3":str, "L3":str, "bigint":str,
 \end{verb}
 
 The {\sc mal} language is purely designed as intermediate language to express the operations.
-Generally, a {\sc mal} statement is an assignment in the format: 
+Generally, a {\sc mal} statement is an assignment of the form:
 \begin{verb}
 VAR=<FILENAME>[COUNT]:VAR_TYPE := 
      MOD.FUNC(PARAM1=<FILENAME>[COUNT]:PARAM1_TYPE, ...);
 \end{verb}
-
-%The details of the actual execution can be gathered using the Stethoscope. A single record is shown in Figure \ref{}. Of interest to this paper are the properties shown for the arguments and return variables.
 
 Every function belongs to a module.
 The arguments are either typed scalar values (\texttt{\small :type}) or a reference to a column (\texttt{\small :bat[:type]}).
 If a variable (\texttt{\small VAR}) refers to a column, which can be memory mapped, it is also tagged with its base \texttt{\small FILENAME} on disk and the number of values in this column (\texttt{\small COUNT}).
 
 The above {\sc mal} program is straightforward.
-It first reads (\texttt{\small sql.bind}), gathers (\texttt{\small sql.delta}) and projects (\texttt{\small algebra.projection}) the data of one column (\texttt{\small \_tables.id}) from the disk.
+It first loads (\texttt{\small sql.bind}) and projects (\texttt{\small algebra.projection}) the data of one column (\texttt{\small \_tables.id}) from the disk.
 Then the data is passed to \texttt{\small aggr.count} to compute the \texttt{\small COUNT}.
 Finally, \texttt{\small sql.resultSet} emits the query result.
 {\sc mal} statements are important data for {\sc malcolm}: before query execution, it gives memory footprint estimation per {\sc mal} statement; after query execution, it collects execution statistics per {\sc mal} statement.
@@ -193,19 +187,19 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
 \renewcommand{\arraystretch}{0.9}\renewcommand{\tabcolsep}{3pt}\{``source'':``trace'', &   \{``source'':``trace'',       \\
  ~{\color{red}``clk'':1767476753919,}                     &   ~ {\color{red}``clk'':1767476754150,}                      \\
  ~{\color{red}``ctime'':1528314717302449,}                &   ~ {\color{red}``ctime'':1528314717302680,}                 \\
- ~``thread'':8,                                           &   ~ ``thread'':8,                                            \\
- ~``function'':``user.s4\_2'',                            &   ~ ``function'':``user.s4\_2'',                             \\
- ~``pc'':9,                                               &   ~ ``pc'':9,                                                \\
- ~``tag'':248,                                            &   ~ ``tag'':248,                                             \\
+% ~``thread'':8,                                           &   ~ ``thread'':8,                                            \\
+% ~``function'':``user.s4\_2'',                            &   ~ ``function'':``user.s4\_2'',                             \\
+% ~``pc'':9,                                               &   ~ ``pc'':9,                                                \\
+% ~``tag'':248,                                            &   ~ ``tag'':248,                                             \\
  ~``module'':``algebra'',                                 &   ~ ``module'':``algebra'',                                  \\
  ~``instruction'':``projection'',                         &   ~ ``instruction'':``projection'',                          \\
- ~``session'':``b4a92225-127d-4a1f-b2ef-...'',            &   ~ ``session'':``b4a92225-127d-4a1f-b2ef-...'',             \\
+% ~``session'':``b4a92225-127d-4a1f-b2ef-...'',            &   ~ ``session'':``b4a92225-127d-4a1f-b2ef-...'',             \\
  ~{\color{red}``state'':``start'',}                       &   ~ {\color{red}``state'':``done'',}                         \\
  ~{\color{red}``usec'':0,}                                &   ~ {\color{red}``usec'':230,}                               \\
  ~``rss'':87,                                             &   ~ ``rss'':87,                                              \\
  ~``size'':0,                                             &   ~ ``size'':0,                                              \\
  ~{\color{red}``nvcsw'':1,}                               &   ~                                                          \\
- ~\textbf{``stmt'':"X\_17…:= algebra.projection(…);'',}   &   ~ \textbf{``stmt'':"X\_17…:= algebra.projection(…);'',}    \\
+ ~``stmt'':"X\_17…:= \textbf{algebra.projection}(…);'',   &   ~ ``stmt'':"X\_17…:= \textbf{algebra.projection}(…);'',    \\
  ~``short'':"X\_17[0]:= projection(…, …)'',               &   ~ ``short'':"X\_17[0]:= projection(…, …)'',                \\
  ~``prereq'':[4,8],                                       &   ~ ``prereq'':[4,8],                                        \\
  ~\textbf{``ret"}:[\{                                     &   ~ ``ret'':[\{                                              \\
@@ -227,18 +221,17 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
  ~~~~   ``bid'':``863'',                                  &   ~~~~    ``bid'':``863'',                                   \\
  ~~~~   ``count'':``92'',                                 &   ~~~~    ``count'':``92'',                                  \\
  ~~~~   ``size'':736,                                     &   ~~~~    ``size'':736,                                      \\
- ~~~~   \textbf{``eol'':1}                                &   ~~~~    \textbf{``eol'':1}                                 \\
- ~~  \},                                                  &   ~~   \},                                                   \\
+ ~~~~   \textbf{``eol'':1}\},                             &   ~~~~    \textbf{``eol'':1}\},                              \\
  ~~  \{``index'':``2'',                                   &   ~~   \{``index'':``2'',                                    \\
- ~~~~   ``name'':"X\_16'',                                &   ~~~~    ``name'':"X\_16'',                                 \\
- ~~~~   ``alias'':``sys.\_tables.id'',                    &   ~~~~    ``alias'':``sys.\_tables.id'',                     \\
- ~~~~   ``type'':``bat[:int]'',                           &   ~~~~    ``type'':``bat[:int]'',                            \\
- ~~~~   ``kind'':``persistent'',                          &   ~~~~    ``kind'':``persistent'',                           \\
- ~~~~   ``bid'':``103'',                                  &   ~~~~    ``bid'':``103'',                                   \\
- ~~~~   ``count'':``99'',                                 &   ~~~~    ``count'':``99'',                                  \\
- ~~~~   ``size'':396,                                     &   ~~~~    ``size'':396,                                      \\
- ~~~~   \textbf{``eol'':1}                                &   ~~~~    \textbf{``eol'':1}                                 \\
-   \}]\}                                                  &      \}]\}                                                   \\
+ ~~~~   ``name'':"X\_8'',                                 &   ~~~~    ``name'':"X\_8'',                                  \\
+% ~~~~   ``alias'':``sys.\_tables.id'',                    &   ~~~~    ``alias'':``sys.\_tables.id'',                     \\
+% ~~~~   ``type'':``bat[:int]'',                           &   ~~~~    ``type'':``bat[:int]'',                            \\
+% ~~~~   ``kind'':``persistent'',                          &   ~~~~    ``kind'':``persistent'',                           \\
+% ~~~~   ``bid'':``103'',                                  &   ~~~~    ``bid'':``103'',                                   \\
+% ~~~~   ``count'':``99'',                                 &   ~~~~    ``count'':``99'',                                  \\
+% ~~~~   ``size'':396,                                     &   ~~~~    ``size'':396,                                      \\
+ ~~~~   ...                                               &   ...                                                        \\
+ ~~~~   \textbf{``eol'':1}\}]\}                           &   ~~~~    \textbf{``eol'':1}\}]\}                            \\
 \hline
 \end{tabular}
 }
@@ -247,7 +240,7 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
 %\end{table}
 \end{figure}
 
-\subsection{Profiling Information}
+\subsection{MonetDB Profiling Information}
 
 The MonetDB kernel can be instructed to emit profiling events for the execution of {\sc mal} statements, e.g. by establishing a connection using MonetDB’s profiling tool.
 % Every {\sc mal} function comes with two event records: one taken at the beginning and another upon completion of the operation.
@@ -259,7 +252,7 @@ The MonetDB kernel can be instructed to emit profiling events for the execution 
 Figure~\ref{fig:json_obj} shows the before/after profiling events produced for the \texttt{\small algebra.projection} operation when executing the {\sc mal} program above.
 The left column shows the event at the \texttt{\small "start"} and the right column the event when the operation is \texttt{\small "done"}.
 Differences between the two objects are marked in red.
-Of most interest to our estimation are the properties shown for the arguments  (\texttt{\small “arg”}) and return variables (\texttt{\small "ret"}).
+Of most interest to our estimation are the properties shown for the arguments (\texttt{\small "arg"}) and return variables (\texttt{\small "ret"}).
 For instance, in a \texttt{\small "ret"} object, the field \texttt{\small "size"} is a good estimation of how much memory the result set of this function consumes; while in an \texttt{\small "arg"} object, the field \texttt{\small "eol":1} indicates this argument has reached its end-of-life.
 This information together with the \texttt{\small "size"} allows us to estimate how much memory is freed after this operation.
 
@@ -294,83 +287,53 @@ This information together with the \texttt{\small "size"} allows us to estimate 
 %\label{fig:tpch_instructions}
 %\end{figure}
 
-\section{Micro Models}
+\section{{\sc malcom} Micro Models}
 \label{sec:malcolm} 
-With an abundance of profiling events we can derive a micro-model for each of {\sc mal} instruction
-to estimate their footprint.
-The ultimate goal of {\sc malcolm} is, given a {\sc mal} physical execution plan of an SQL query,
-i%(i.e. a list of {\sc mal} statements to be executed in that order), estimate 
-to estimate precisely the resource claim with \textit{only using information from our memory footprint estimation model}.
+With an abundance of profiling events we can derive a micro-model for each {\sc mal} instruction to estimate their footprint.
+The goal of {\sc malcolm} is, given a {\sc mal} execution plan of an SQL query, to estimate the resource needs by \textit{only using information from our memory footprint estimation model}.
 
 The algorithm to estimate an upper bound of the memory needed to execute a {\sc mal} plan, is shown in pseudo code below.
-When a {\sc mal} plan is received, {\sc malcolm} first annotates each {\sc mal} statement with an estimation of how much memory it will consume and release (i.e. the \texttt{\small i.mem\_fprint} and \texttt{\small i.free\_size} below).
-Then the algorithm iterates over the {\sc mal} plan (i.e. \texttt{\small mal\_statements}).
-At each iteration, it updates \texttt{\small max\_mem} with the memory footprint of current {\sc mal} statement (\texttt{\small i.mem\_fprint}), then it refreshes the current memory consumption (\texttt{\small curr\_mem}) by also taking into account the memory that will be freed by this statement (\texttt{\small i.free\_size}). 
+When a {\sc mal} plan is received, {\sc malcolm} first annotates each {\sc mal} statement with an estimation of how much memory it will consume (\texttt{\small i.mem\_fprint}) and release (\texttt{\small i.free\_size}).
+Then the algorithm iterates over the {\sc mal} plan (i.e. the \texttt{\small mal\_statements} below).
+At each iteration, it adds the memory footprint of this {\sc mal} statement (\texttt{\small i.mem\_fprint}) to the current total memory consumption (\texttt{\small curr\_mem}) and updates \texttt{\small max\_mem} if necessary.
+After that, it adjusts \texttt{\small curr\_mem} with the amount of memory that will be freed by this statement (\texttt{\small i.free\_size}). 
 \begin{verb}
-max_mem  = 0
-curr_mem = 0 
+max_mem  = 0, curr_mem = 0 
 for i in mal_statements:
-  max_mem = max(max_mem, curr_mem + i.mem_fprint)
-  curr_mem = curr_mem + i.mem_fprint - i.free_size
+  curr_mem += i.mem_fprint
+  max_mem = max(max_mem, curr_mem)
+  curr_mem -= i.free_size
 \end{verb}
 
 After the execution of the {\sc mal} plan, we update our memory footprint estimation model with the observed execution information.
-We initialize the estimation model with straightforward heuristics, e.g. the result of an aggregation is always of value ``1''.
-The initialization can be extended with basic column statistics (\texttt{\small min}, \texttt{\small max}, \texttt{\small count}, etc.) that can be gathered using MonetDB’s \texttt{\small ANALYZE} command .
+We initialise the estimation model with basic column statistics (\texttt{\small min}, \texttt{\small max}, \texttt{\small count}, etc.) that can be gathered using MonetDB’s \texttt{\small ANALYZE} command .
 
 The estimation model is built by dividing {\sc mal} instructions with similar functionality (most of them represent a relational operator each) into several groups and abstracting away their specific signatures.
-Currently, the model includes ~10 groups.
+Currently, the model includes \texttildelow 10 groups.
 We briefly analyse each of them below.
 Note that we only consider bulk operators here (i.e. taking columns as operands), which are the default ones in MonetDB.
 
-%\subsection{Load instructions}
-\Skip\textbf{Data Loading Operators.}
-Bind instruction loads (or memory maps) a column into memory, thus the result size is the size of the column.
+\subsection{Load instructions}
+%\Skip\textbf{Data Loading Operators.}
+A \texttt{\small bind} instruction loads (or memory maps) a column into memory, thus the memory footprint is the size of the column.
 This is a worst case assumption, because in practice not all of the column needs to be loaded.
 %For example, if the column is sorted and we perform a range select using a binary search
 %then the size of the result determines the footprint.
 %However, using the full column size aids in cache management, because over a series of queries like it will be completely loaded.
 
-%\subsection{Arithmetic Operators}
-\Skip\textbf{Arithmetic Operators.}
-%The operations can be grouped by complexity to predict the outcome of a hypothetical operation. The first group includes the {\em batcalc} operations. They all obey the following structure:
-%\begin{verb}
-%  res:bat[:lng]:= batcalc.==( l:bat[:lng],r:bat[:lng])
-%  res:bat[:lng]:= batcalc.==( l:bat[:lng],r::lng)
-%  res:bat[:lng]:= batcalc.==( l:lng,r:bat[:lng])
-%  res:bat[:lng]:= batcalc.==( l:lng,r:lng)
-%\end{verb}
-%The argument is either scalar or a reference to a column. However, in all cases the number of result tuples can be looked up from the argument events. The processing time depends mostly on the type's footprint and the influence of concurrent activity.
-%
+\subsection{Arithmetic Operators}
+%\Skip\textbf{Arithmetic Operators.}
 These operators always return the same number of values as their operands (MonetDB requires both operands to have equal size).
 However, the data type of the output can be a larger-sized data type than both operands to capture possible overflow.
-Hence, their output size is computed as:
+Hence, their memory footprint is computed as:
 \begin{verb}
-arith_ret.size = sizeOf(arg1) * sizeof(ret.data_type)
+arith_mfp = sizeOf(arg1) * sizeof(ret.data_type)
 \end{verb}
 
-%\subsection{Aggregate Operators}
-\Skip\textbf{Aggregate Operators.}
+\subsection{Aggregate Operators}
+%\Skip\textbf{Aggregate Operators.}
 This category includes operations such as \texttt{\small sum}, \texttt{\small avg}, \texttt{\small min}, \texttt{\small max}, \texttt{\small count}, \texttt{\small single} and \texttt{\small dec\_round}.
-%
-%The count of the result is obviously one.
-%
-%The groupby signature is:
-%\begin{verbatim}
-%(bat[:oid], bat[:oid], bat[:X]) := group.groupdone(bat[:X]);
-%\end{verbatim}
-%The first return value is the ids of the grouped column, the second is
-%the ids of the discinct values of the column(the third what ??). To predict
-%the size of the return variables, we use the ground statistics of the column
-%(size, count, discinct values).
-%
-%The operation subgroupdone has a similar signature to groupdone, but it operates on intermediate
-%variables, where we do not have the column information. In this case, we run a
-%kNN based on the argument sizes.
-%
-%Orderby is translated into sort in {\sc mal}.
-%
-The number of values returned by these operators equals to the number of groups in which its input data column is divided (by earlier \texttt{\small GROUP BY} statements, or 1 if there is no \texttt{\small GROUP BY}).
+The number of values returned by these operators equals the number of groups in which the input data column is divided (by earlier \texttt{\small GROUP BY} statements, or 1 if there is no \texttt{\small GROUP BY}).
 The most general signature of these operators takes two operands: \texttt{\small arg1} is a column containing the actual values to work on; \texttt{\small arg2} is a column containing the group IDs, one for each value in \texttt{\small arg1}.
 The output size of an aggregate operator is computed by multiplying the number of unique values in \texttt{\small arg2} with the size of the return data type.
 %(due to automatic type promotion in MonetDB for possible overflow, the size of the return data type can be bigger than that of input data type):
@@ -378,10 +341,8 @@ The output size of an aggregate operator is computed by multiplying the number o
 aggr_ret.size = COUNT(DISTINCT arg2) * sizeof(ret.data_type)
 \end{verb}
 
-%\subsection{Limit Operators}
-\Skip\textbf{Limit Operators.}
-%Limit and sample operators(firstn, and sample? in {\sc mal}) are also trivial, we just output the minimum of the argumens size and the limit size.
-%
+\subsection{Limit Operators}
+%\Skip\textbf{Limit Operators.}
 This group includes \texttt{\small firstn} and \texttt{\small sample}.
 They return at most $N$ values from its input column \texttt{\small arg} as specified by the limit.
 Hence, their output size is computed as:
@@ -389,8 +350,8 @@ Hence, their output size is computed as:
 limit_ret.size = MIN(COUNT(arg), N) * sizeof(arg.data_type)
 \end{verb}
 
-%\subsection{Grouping Operators}
-\Skip\textbf{Grouping Operators.}
+\subsection{Grouping Operators}
+%\Skip\textbf{Grouping Operators.}
 MonetDB currently has 24 grouping operators for different situations.
 For instance, the position of the input data column (\texttt{\small arg1}) in a \texttt{\small GROUP BY} SQL clause determines the use of a \texttt{\small GROUP} operator or a \texttt{\small SUBGROUP} operator in {\sc mal}.
 More variations of \texttt{\small GROUP} or \texttt{\small SUBGROUP} operators are used depending on the availability of auxiliary information (e.g. some statistics of the input column).
@@ -403,18 +364,8 @@ group_ret.size = COUNT(arg1) * sizeof(OID) +
   estimate_nr_groups(arg1) * (sizeof(OID) + sizeof(LNG))
 \end{verb}
 
-%\subsection{Set Operators}
-\Skip\textbf{Set Operators.}
-%We do not have any relevant information to do an accurate guess for the set instructions, so we output the worst case of the result.
-%
-%$$ intersect(A,B) ~= min(A,B)$$
-%$$ merge(A,B) ~= A+B $$
-%$$ diff(A,B) ~= A $$
-%\begin{verbatim}
-%(bat[:X],bat[:oid],bat[:oid]) := algebra.sort(bat[:X], bat[:oid], bat[:oid], bit, bit)
-%\end{verbatim}
-%The size of each return value is exactly the same as the corresponding argument size.
-%
+\subsection{Set Operators}
+%\Skip\textbf{Set Operators.}
 The current estimations for the set operators use heuristics to compute an upper bound of the result size.
 
 \texttt{\small UNION ALL} simply returns a concatenation of its two input columns \texttt{\small arg1} and \texttt{\small arg2}, so its output size can be precisely computed with:
@@ -427,7 +378,7 @@ unionall_ret.size = (COUNT(arg1) + COUNT(arg2)) *
 We use the following formula to compute an upper bound of its result size (since it does not exclude unique values in both \texttt{\small arg1} and \texttt{\small arg2}):
 \begin{verb}
 union_ret.size = (COUNT(DISTINCT arg1) + 
-  COUNT(DISTINCT arg2) * sizeof(arg1.data_type)
+  COUNT(DISTINCT arg2)) * sizeof(arg1.data_type)
 \end{verb}
 
 \texttt{\small INTERSECT} returns values that exist in both of its input columns \texttt{\small arg1} and \texttt{\small arg2} with duplicates eliminated.
@@ -445,11 +396,11 @@ excpt_all.size = COUNT(arg1) * sizeof(arg1.data_type)
 excpt.size = COUNT(DISTINCT arg1) * sizeof(arg1.data_type)
 \end{verb}
 
-%\subsection{Projection Operators}
-\Skip\textbf{Projection Operators.}
+\subsection{Projection Operators}
+%\Skip\textbf{Projection Operators.}
 Projection operators extract a small part of a column.
 The arguments are a candidate list \texttt{\small cand} containing the OIDs of the to-be-projected values and a reference to the (persistent) column \texttt{\small col}.
-The number of elements in the output equals to the number of elements of the candidate list.% and the time is based on the random access and copying the data around.
+The number of elements in the output equals the number of elements of the candidate list.% and the time is based on the random access and copying the data around.
 Hence, their exact output size is computed as:
 \begin{verb}
 proj_ret.size = COUNT(cand) * sizeof(col.data_type)
@@ -458,60 +409,19 @@ proj_ret.size = COUNT(cand) * sizeof(col.data_type)
 %In some weird cases, the projection instruction returns str(copies from heap) instead of ids, which makes hard to predict.
 %In this case, we run a kNN based on the type and argument distance, to find a similar instruction use this to find the output size.
 
-%\subsection{Selection Operators}
-\Skip\textbf{Selection Operators.}
-%The next group is formed by the filter operations {\emph thetaselect, select}.
-%In this case we know that the output is always smaller then the candidate tuples considered.
-%But how to determine the estimated result size. Traditional cost-based models assume a uniform distribution of the data and calculate the fraction of the domain, i.e. the selectivity factor.
-%
-%In our case, we have can collect a series of actual filter operation and keep them around to find a 'nearest-neighbor'.
-%A synopsis of the search algorithm is shown in Figure \ref{.}
-%It initially considers two events neighbors if they relate to the same underlying persistent column.
-%For this case the candidate lists determine how many elements are still to be consider by the filter operations.
-%
-%To predict the size of a range select, we used the kNN algorithm, using k=5, to find the 5 closest selects to the one we want to predict, considering the lower and higher bounds as distance metrics.
-%When we are facing a one bound select ($<$,$>$ etc) we use the dataset statistics to fill the other bound (e.g in case of $<$ we want the column min).
-%
-%\subsubsection{Subsequent Selects}
-%%TODO make it more general
-%In case of intermediate select instructions, the ranges are not adequate to make an accurate prediction, because the argument size may vary based on the previous selects.
-%To overcomes this we incorporated the estimations of the previous intructions, to build a graph that relates each variable to a size estimation.
-%This way we cal also use the argument estimation to predict the size of the select result.
-%The code for selection prediction is shown in Figure\ref{sel:code}.
-%In real life it is very common to find correlated columns, in which the first selection may affect non-linearly the second.
-%In our design we do not handle such cases(Future work).
-%
-%\begin{figure}[t]
-%\begin{verb}
-%def div(i1, i2):
-%return (i1.hi-i1.lo) / (i2.hi-i2.lo)
-%	
-%def extrapolate(traini, testi):
-%traini.cnt * div(testi,traini) * testi.approx_arg_cnt / traini.argcnt
-%	
-%def predict(testi, traind, approxG):
-%knn5 = traind.knn(testi,5)
-%return sum([i.extrapolate(testi) for i in knn5]) / len(knn5)
-%\end{verb}
-%\caption{Code snippet for making predictions for range selects}
-%\label{sel:code}
-%\end{figure}
-%
-%\subsubsection{Point Selects}
-%Again we use the kNN to find the 5 closest points, and extrapolate based on the argument size.
-%
+\subsection{Selection Operators}
+%\Skip\textbf{Selection Operators.}
 This operator group includes the filter operations \texttt{\small theta-select} and \texttt{\small select}.
-For these operators, we know that the output is always smaller than or equals to the candidate tuples considered.
+For these operators, we know that the output is always smaller than or equal to the candidate tuples considered.
 To estimate the result size, traditional cost-based models assume a uniform distribution of the data and calculate the fraction of the domain, i.e. the selectivity factor.
 In practice, however, the uniform distribution of the data assumption does not always hold, so these models have limited accuracy.
 In our model, we keep the results of a series of actual filter operations, so as to use them to find a ``historical nearest-neighbor'' for any filter operation in a {\sc mal} plan whose cost we need to estimate.
 
 %MonetDB has numerous select operators to support filtering on different data types, range or point select, with a lower-/upper-bound or both, etc.
 The select operators are abstracted into a single template with three operands \texttt{\small sel(col, range, op)}, where \texttt{\small col} is a reference to the (persistent) column, \texttt{\small range} is the selection range (low, high), and \texttt{\small op} is the comparison operator ($<$, $>$, $<=$, $>=$, etc).
-In our model, we keep a dictionary of all the selection executed in the format of this signature, 
-but with an extra value \texttt{\small cnt} to denote the number of values selected.
+In our model, we keep a dictionary of all the selections executed so far in the format of this signature, but with an extra value \texttt{\small cnt} to denote the number of values selected.
 
-The estimation for a selection operator \texttt{\small sel(col, range op)} works as follows.
+The estimation for a selection operator \texttt{\small sel(col, range, op)} works as follows.
 First, we find in the dictionary records of all previous selections on the same \texttt{\small col} with the same \texttt{\small op}.
 Then, we use a $k$ nearest neighbour (kNN) procedure to find the 5 nearest records based on the selection \texttt{\small range}.
 Next, for each of the 5 records, we extrapolate the number of selected values based on the selectivity and input column size. 
@@ -525,12 +435,8 @@ for dict in kNN(dictionary, sel, 5)
 sel_ret.size = extrap/5 * sizeof(sel.col.data_type)
 \end{verb}
 
-%\subsection{Join Operators}
-\Skip\textbf{Join Operators.}
-%In {\sc malcolm} we use a kNN(k=5) on the joins we have in our dictionary, that operate on the same two columns if possible, and find the ones closest based on the argument sizes.
-%...
-%Such join sequences are mostly pointer chasing activities where the result set typically is less then the smallest argument. (to be checked)
-%
+\subsection{Join Operators}
+%\Skip\textbf{Join Operators.}
 For a cross product of two columns (\texttt{\small col1}, \texttt{\small col2}) we know it will return \texttt{\small COUNT(col1) * COUNT(col2)} number of values.
 The \texttt{\small cross product} operator of MonetDB takes two data columns as its inputs, and returns two columns where each column contains OIDs referring to data values in an input column.
 The two OID columns together denote how the values from the input columns are aligned in the cross product result.
@@ -554,8 +460,8 @@ for dict in kNN(dictionary, join, 5)
 sel_ret.size = extrap/5 * sizeof(OID) * 2
 \end{verb}
 
-\section{Optimizer Simulator Architecture}
-With the micro-models in place, we can use a simple {\sc mal}-simulator to obtain a precise indication of the memory footprint.
+\Skip\textbf{Optimizer Simulator Architecture.}
+With the micro-models in place, we can use a simple {\sc mal}-simulator to obtain a fairly accurate indication of the memory footprint.
 In its basic form it simulates a sequential execution of the query.
 The full-blown version uses the same scheduling method as within the MonetDB code base to approximate the parallel behaviour.
 
@@ -565,22 +471,22 @@ In this section we discuss the results obtained with the {\sc malcolm} prototype
 To conduct our experiments we used both TPC-H and the Airtraffic benchmarks.
 The former is the baseline against which most database systems are evaluated.
 Its major weakness is the uniform data distribution.
-Although this simplifies analysis of the quality of a space predictor, it is not representative for a real-life case.
-Therefore, we also use the Air Traffic benchmark~\footnote{airtraffic}, which consists of a single table with $>$120 M rows and 100 columns of flight information.
-The data is skewed.
+Although this simplifies analysis of the quality of a space predictor, it is not representative of real-life workloads.
+Therefore, we also use the Air Traffic benchmark~\footnote{\url{github.com/MonetDBSolutions/airtraffic-benchmark}}, which consists of a single table with $>$120 M rows and 100 columns of flight information.
+The data in this benchmark is skewed.
 
 \subsection{TPC-H}
-To exercise {\sc malcolm} against TPC-H we created a query generator, which changes the parameters in the official benchmark.
+To test {\sc malcolm} against TPC-H we created a query generator, which changes the parameters in the official benchmark.
 A key factor is to understand how long it takes before {\sc malcolm} has ``learned'' the data distribution and the estimation prediction.
 Therefore, we used a large collection of morphed queries and split it into two portions.
 One part is used to feed into the simulator to train the micro-models, the second part is used to assess their quality.
 
-Initial experiments led to the results shown in Figure~\ref{fig:q1} and ~\ref{fig:q6}.
+Initial experiments led to the results shown in Figure~\ref{fig:tpch-q1-q6}.
 TPC-H Q1 is a simple large scan followed by an aggregation. The sole parameter is the value range.
 The experiment shows a steep learning curve, which can be attributed to the uniform distribution.
 However, it also results in a little over fitting.
 
-As a training set for each query, we randomized every selection point and range, and produced 200 random versions of the query.
+As a training set for each query, we randomised every selection point and range, and produced 200 random versions of the query.
 As a test set we used the original query.
 
 In query 19 we observe a misprediction of 70\%.
@@ -624,17 +530,10 @@ This experiment that {\sc malcolm} takes much longer to reach an almost perfect 
 \begin{figure}[t!]
 	\centering
 	\includegraphics[height=1in,width=3in]{Figures/Q1.png}
-	\caption{TPC-H Query 1 error bounds
-		\label{fig:q1}}
-\end{figure}
-
-\begin{figure}[t!]
-	\centering
 	\includegraphics[height=1in,width=3in]{Figures/Q6.png}
-	\caption{TPC-H Query 6 error bounds
-		\label{fig:q6}}
+	\caption{TPC-H queries Q1 and Q6 prediction deviations
+		\label{fig:tpch-q1-q6}}
 \end{figure}
-
 
 \subsection{Air Traffic}
 The Air Traffic benchmark is a real-world example of  business intelligence application.
@@ -642,36 +541,36 @@ Although it is represented by a single table, it is highly skewed and sparse.
 The queries are mostly simple select-group-aggregate, but given the table size still hard to process.
 Again we can see both an under- and an over-estimate that improves over time. Albeit it takes more queries to stabilize.
 %One immediate observation is that in this case it takes more queries to reach an optimal estimate.
-% One with a low error rate.
-Figure ~\ref{fig:4-15} for query 4  also illustrates how {\sc malcolm} not necessarily improve monotonic.
+% One with a deviation close to zero.
+Figure ~\ref{fig:airtraffic-q4-q15} for query Q4 and Q15 also illustrates how {\sc malcolm} not necessarily improve monotonic.
 Of course, this is a result of the actual query load.
 
 \begin{figure}[t!]
 	\centering
 	\includegraphics[height=2in,width=3in]{Figures/Q4-15.png}
 	\caption{Air Traffic query 4 and 15
-		\label{fig:4-15}}
+		\label{fig:airtraffic-q4-q15}}
 \end{figure}
 
 \begin{figure}[t!]
 	\centering
 	\includegraphics[height=2in,width=3in]{Figures/Q10-19.png}
 	\caption{Air Traffic query10 and 19
-		\label{fig:q10-19}}
+		\label{fig:airtraffic-q10-q19}}
 \end{figure}
 
-%\section{Related work}
-%The approach taken in this project can best be compared with the long tradition in database query optimisers and database design wizards.
-%They all collect query traces from an actual production system and use them to derive e.g. an optimal set of search accelerators \cite{DBLP:conf/vldb/ChaudhuriN07}.
-%This process seeks a balance between index creation and maintenance, but primarily deals with performance optimisation.
-%The memory footprint is of less concern.
-%Alternatively, it extends the work on gathering query traces to (semi) automatically improve the cost model for query optimisation \cite{DBLP:journals/ibmsj/MarklLR03}.
-%A better statistics improves both performance and resource use.
-%All these systems are focused on a relative small and fixed compute cluster or database  appliance.
-%
-%In a more recent project \cite{DBLP:journals/pvldb/DingDWCN18} the authors gather sub-plans from the query trace log and use it as the building block for new queries.
-%They show that re-use of good plans, i.e. based on past behaviour, leads to both a faster optimisation step and overall better performance. {\sc malcolm} does not address the optimiser itself, but assumes that a physical plan has already been produced.
-%It merely determines which virtual machine can handle it comfortably.
+\section{Related work}
+The approach taken in this project can best be compared with the long tradition in database query optimisers and database design wizards.
+They all collect query traces from an actual production system and use them to derive e.g. an optimal set of search accelerators \cite{DBLP:conf/vldb/ChaudhuriN07}.
+This process seeks a balance between index creation and maintenance, but primarily deals with performance optimisation.
+The memory footprint is of less concern.
+Alternatively, it extends the work on gathering query traces to (semi) automatically improve the cost model for query optimisation \cite{DBLP:journals/ibmsj/MarklLR03}.
+A better statistics improves both performance and resource use.
+All these systems are focused on a relative small and fixed compute cluster or database  appliance.
+
+In a more recent project \cite{DBLP:journals/pvldb/DingDWCN18} the authors gather sub-plans from the query trace log and use it as the building block for new queries.
+They show that re-use of good plans, i.e. based on past behaviour, leads to both a faster optimisation step and overall better performance. {\sc malcolm} does not address the optimiser itself, but assumes that a physical plan has already been produced.
+It merely determines which virtual machine can handle it comfortably.
 
 \section{Summary and outlook\label{summary}} 
 %In this paper we proposed a novel resource allocation technique for a database engine using resilient intermediates.
@@ -682,10 +581,10 @@ In the near future, we plan to extend {\sc malcolm} to also look at the memory f
 %This should lead to a lower bound on the memory footprint at the cost of running slower.
 Both memory footprint and degree of parallelism enables the user to optimise his/her system based on dollar/response times.
 
-%\subsection*{Acknowledgments}
-\Skip\textbf{Acknowledgments}
+\section*{Acknowledgments}
+%\Skip\textbf{Acknowledgments}
 This research has received funding from the European Union’s Horizon 2020 research and innovation program under Grant Agreement no. 732366 (ACTiCLOUD).
+\bibliography{IEEEabrv,refs}
 \bibliographystyle{IEEEtran}
-\bibliography{refs}
 
 \end{document}
