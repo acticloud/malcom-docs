@@ -174,9 +174,9 @@ The above {\sc mal} program is straightforward.
 It first loads (\texttt{\small sql.bind}) and projects (\texttt{\small algebra.projection}) the data of one column (\texttt{\small sys.\_tables.id}) from the disk.
 Then the data is passed to \texttt{\small aggr.count} to compute the \texttt{\small COUNT}.
 Finally, \texttt{\small sql.resultSet} emits the query result.
-The {\sc mal} statements play an important role in {\sc malcolm}: before a query execution, one can pass the query's execution plan in MAL to {\sc malcolm} 
-
-it gives memory footprint estimation per {\sc mal} statement; after query execution, it collects execution statistics per {\sc mal} statement.
+The {\sc mal} statements play an important role in {\sc malcolm}: before a query execution, one can pass the query's execution plan in MAL to {\sc malcolm} to get an estimation of the memory footprint of this query; and after a query execution, one can pass the query's execution trace to {\sc malcolm}.
+The trace is also expressed as {\sc mal} statements, but they now contain various information of the actual query execution, such as the execution time of each {\sc mal} statement and the number of values contained in each input and output paramter. 
+Given such a trace, {\sc malcolm} can subsequently collect execution statistics per {\sc mal} statement and update its model.
 
 %\begin{table}
 \begin{figure}[t]
