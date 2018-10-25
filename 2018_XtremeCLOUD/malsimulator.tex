@@ -4,20 +4,21 @@
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
+\usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
-\usepackage{a4wide}
 \usepackage{makeidx}
 \usepackage{times}
 \usepackage{epsf}
-\usepackage{graphicx}
 \usepackage{epsfig}
 \usepackage{graphics}
 \usepackage{color}
 \usepackage{url}
+
+\usepackage{balance}  % for  \balance command ON LAST PAGE  (only there!)
 
 %\usepackage[english]{babel} % otherwise, \cite doesn't work with sig-alternate/acm_proc_article-sp
 \usepackage{txfonts}
@@ -63,13 +64,18 @@ Amsterdam, The Netherlands \\
 \begin{abstract} 
 %What is the market pitch? 
 Scale-out of big data analytics applications often does not pay off due to the poor performance in response time  and the increasing bill due to a longer execution time on a resource limited machine.
-To enable a stable DBMS workload environment it helps to maintain several virtual machines hosting part of the database, so that users can send their tasks to those machines that have the best price/performance characteristics.
-This, however, requires a method to decide which VM should be used for a given query, and the technology needed to do this is the focus of this paper.
+To enable a stable DBMS workload environment it helps to maintain several virtual machines with difference resource configurations (CPU, memory, disk, etc) hosting part of the database, so that users can send their tasks to those machines that have the best price/performance characteristics.
+This, however, requires a method to decide which VM should be used for a given query.
+
+When choosing the VM, the memory usage of a query is a particularly important factor, especially for the main-memory (optimised) DBMSs which are generally used for analytical queries today.
+In this paper, we introduce MALCOM, a memory footprint predictor for queries based on resilient intermediates in MonetDB.
+Unlike traditional cost-based approaches, MALCOM uses an empirical approach (i.e. using the memory usage information of queries executed in the past) to incrementally update its model to improve its predictions.
+Our preliminary experiment results show that this approach is robust against varying data distributions.
 \end{abstract} 
 
 \section{Introduction}
 \label{Introduction} 
-Since its inception, database designers have keenly looked at the opportunities to use large, distributed processing platforms. Cluster-based products are readily available, such as in appliance products from Oracle Exadata, SQL Parallel Data Warehouse, IBM Blu and Teradata, but they are often limited to a few tens of compute nodes.
+Since the start of database research, database designers have keenly looked at the opportunities to use large, distributed processing platforms. Cluster-based products are readily available, such as in appliance products from Oracle Exadata, SQL Parallel Data Warehouse, IBM Blu and Teradata, but they are often limited to a few tens of compute nodes.
 A plethora of research activities has shown that in all but the simplest cases achieving a good performance is at least hard, especially when a query involves joins spread over multiple compute nodes and thus requires expensive data exchange.
 
 The predominant way out nowadays, taken by NoSQL systems such as Casandra and Impala, is to address part of the problem space by focusing on select-aggregate queries.
@@ -79,16 +85,16 @@ The basic abstraction in Spark is a Resilient Distributed Dataset (RDD), which r
 %In essence, an RDD can be seen as a relational table used for interoperability, an approach that can be traced back to Microsoft's ODE, which has been used for decades to exchange data between DBMS and its applications.
 %Similar functional abstractions can nowadays be found in R's Data Frames and Python Pandas.
 
-Although in many cases it is easy to scale-up for improved response time, partitioning a database to benefit from a low cloud service price tag and to overcome resource limitations of smaller machines is still a much sought after skill.
+Although in many cases it is easy to scale-up for improved response time, partitioning a database to benefit from a low cloud service price tag and to overcome resource limitations of smaller machines is still a much sought-after skill.
 This product space is addressed by Snowflake and AWS Redshift.
 Snowflake has been designed from a cloud perspective, taking resource management as its key driving factor.
 It conceptually provides every user with a complete copy of the database and relies on multi-level caching.
 AWS Redshift is an improved version of PostgreSQL, which has been further tuned towards better I/O bandwidth use.
 
 In this paper we take a fresh look at resource allocation for query processing in the context where intermediates in a query plan are fully materialised before passed on towards the next operator.
-This model fits not only the Apache Spark programming model, but also the query execution model of our database system MonetDB({\small\url{www.monetdb.org}}).
+This model fits not only the Apache Spark programming model, but also the query execution model of our database system MonetDB\footnote{\url{www.monetdb.org}}.
 Resilient intermediates provide new avenues for query optimisation and scheduling as its underlying computation model is based on materialisation of all intermediate steps.
-%Furthermore, in most practical business analytic cases the past is a reasonable predictor of the future.
+Furthermore, in most practical business analytic cases the past is a reasonable predictor of the future.
 
 The main contributions of this paper are
 \begin{itemize}
@@ -99,12 +105,12 @@ The main contributions of this paper are
 
 The approach taken here differs from traditional cost-based query optimisers deployed in distributed database systems by learning about actual resource claims over time, i.e. after each query execution we have precise knowledge of the resources used.
 This information can be harvested and used to predict future operations of a similar nature.
-The rationale stems from the common knowledge that any database application environment has a limited number of `business transactions' or `business intelligence templates' where only some parameters are changed with each call.
+The rationale stems from the common knowledge that any database application environment has a limited number of ``business transactions'' or ``business intelligence templates'' where only some parameters are changed with each call.
 %This knowledge has been used in the past to drive development of DBA wizards~\cite{ms_wizards} for index selection by humans and self-tuning optimisers~\cite{IBM} to avoid expensive join paths in individual queries.
 
 \Skip
 \textbf{Paper Outline.}
-Section~\ref{sec:background} provides a short overview of the MonetDB architecture.% and the projects involved.
+Section~\ref{sec:background} provides a short overview of the MonetDB architecture. % and the projects involved.
 Section~\ref{sec:malcolm} introduces the components and algorithms for our resource estimator {\sc malcom}.
 Section~\ref{sec:evaluation} illustrates the effectiveness of our approach in two use cases: TPC-H and air traffic.
 
@@ -122,7 +128,7 @@ The resource pressure is kept at a minimum by trimming down the degree of parall
 % This provides a.o. insights into the input/output sizes and timing.
 
 \begin{figure}[t]
-    \centering\includegraphics[width=.95\columnwidth]{Figures/MDB_impl_arch.png}
+    \centering\includegraphics[width=\columnwidth]{Figures/MDB_impl_arch.pdf}
     \caption{MonetDB query execution architecture.}
     \label{fig:mdb_arch}
 \end{figure}
@@ -140,28 +146,24 @@ Each operator takes as input the resilient intermediates produced by operators e
 %Since the operator has full knowledge on the actual parameters, it becomes easy to select the proper path.
 %Some operators even perform a sampling step before making a choice on the preferred algorithm.
 
-As an example, consider this simple SQL query: \texttt{\small SELECT COUNT(*) FROM \_tables}, which is eventually translated into a physical execution plan in {\sc mal} statements to be executed by the MonetDB kernel.
+As an example, consider this simple SQL query: \texttt{\small SELECT COUNT(*) FROM sys.\_tables}, which is eventually translated into a physical execution plan in {\sc mal} statements to be executed by the MonetDB kernel.
 The box below show an excerpt of the plan:
 \begin{verb}
-C_5=<tmp_1524>[92]:bat[:oid] := sql.tid(
-     "sys":str, "_tables":str);
-(X_13=<sql_empty_oid_bat>[0]:bat[:oid], 
-X_8=<tmp_147>[99]:bat[:int] := \textbf{sql.bind} (
-     "sys":str, \textbf{"_tables"}:str, \textbf{"id"}:str);
-X_17=<tmp_1477>[92]:bat[:int]:=\textbf{algebra.projection}(
-     C_5=<tmp_1524>[92]:bat[:oid],
-     X_8=<tmp_147>[99]:bat[:int]);
-X_18=92:lng:=\textbf{aggr.count}(X_17=<tmp_1477>[92]:bat[:int]);
-barrier X_72=false:bit := language.dataflow();
+C_5=<tmp_1524>[92]:bat[:oid] := sql.tid("sys":str, "_tables":str);
+X_8=<tmp_147>[99]:bat[:int] := \textbf{sql.bind}
+     (\textbf{"sys"}:str, \textbf{"_tables"}:str, \textbf{"id"}:str);
+X_17=<tmp_1477>[92]:bat[:int] := \textbf{algebra.projection}
+     (C_5=<tmp_1524>[92]:bat[:oid], X_8=<tmp_147>[99]:bat[:int]);
+X_18=92:lng := \textbf{aggr.count}(X_17=<tmp_1477>[92]:bat[:int]);
 sql.resultSet("sys.L3":str, "L3":str, "bigint":str, 
-     64:int, 0:int, 7:int, X_18=92:lng);
+              64:int, 0:int, 7:int, X_18=92:lng);
 \end{verb}
 
 The {\sc mal} language is purely designed as intermediate language to express the operations.
 Generally, a {\sc mal} statement is an assignment of the form:
 \begin{verb}
 VAR=<FILENAME>[COUNT]:VAR_TYPE := 
-     MOD.FUNC(PARAM1=<FILENAME>[COUNT]:PARAM1_TYPE, ...);
+     MOD.FUNC(PARAM1 = <FILENAME>[COUNT]:PARAM1_TYPE, ...);
 \end{verb}
 
 Every function belongs to a module.
@@ -169,17 +171,19 @@ The arguments are either typed scalar values (\texttt{\small :type}) or a refere
 If a variable (\texttt{\small VAR}) refers to a column, which can be memory mapped, it is also tagged with its base \texttt{\small FILENAME} on disk and the number of values in this column (\texttt{\small COUNT}).
 
 The above {\sc mal} program is straightforward.
-It first loads (\texttt{\small sql.bind}) and projects (\texttt{\small algebra.projection}) the data of one column (\texttt{\small \_tables.id}) from the disk.
+It first loads (\texttt{\small sql.bind}) and projects (\texttt{\small algebra.projection}) the data of one column (\texttt{\small sys.\_tables.id}) from the disk.
 Then the data is passed to \texttt{\small aggr.count} to compute the \texttt{\small COUNT}.
 Finally, \texttt{\small sql.resultSet} emits the query result.
-{\sc mal} statements are important data for {\sc malcolm}: before query execution, it gives memory footprint estimation per {\sc mal} statement; after query execution, it collects execution statistics per {\sc mal} statement.
+The {\sc mal} statements play an important role in {\sc malcolm}: before a query execution, one can pass the query's execution plan in MAL to {\sc malcolm} 
+
+it gives memory footprint estimation per {\sc mal} statement; after query execution, it collects execution statistics per {\sc mal} statement.
 
 %\begin{table}
 \begin{figure}[t]
 \renewcommand{\arraystretch}{1.1}
 \renewcommand{\tabcolsep}{3pt}
 \centering
-{\tiny
+{\scriptsize
 \begin{tabular}{|l@{~}l|}
 \hline
 \textbf{JSON object at ``start'' time}    &   \textbf{JSON object at ``done'' time}                                      \\
@@ -199,8 +203,8 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
  ~``rss'':87,                                             &   ~ ``rss'':87,                                              \\
  ~``size'':0,                                             &   ~ ``size'':0,                                              \\
  ~{\color{red}``nvcsw'':1,}                               &   ~                                                          \\
- ~``stmt'':"X\_17…:= \textbf{algebra.projection}(…);'',   &   ~ ``stmt'':"X\_17…:= \textbf{algebra.projection}(…);'',    \\
-% ~``short'':"X\_17[0]:= projection(…, …)'',               &   ~ ``short'':"X\_17[0]:= projection(…, …)'',                \\
+ ~``stmt'':"X\_17?:= \textbf{algebra.projection}(?);'',   &   ~ ``stmt'':"X\_17?:= \textbf{algebra.projection}(?);'',    \\
+% ~``short'':"X\_17[0]:= projection(?, ?)'',               &   ~ ``short'':"X\_17[0]:= projection(?, ?)'',                \\
 % ~``prereq'':[4,8],                                       &   ~ ``prereq'':[4,8],                                        \\
  ~\textbf{``ret"}:[\{                                     &   ~ ``ret'':[\{                                              \\
  ~   ``index'':``0'',                                     &   ~    ``index'':``0'',                                      \\
@@ -241,7 +245,7 @@ Finally, \texttt{\small sql.resultSet} emits the query result.
 
 \subsection{MonetDB Profiling Information}
 
-The MonetDB kernel can be instructed to emit profiling events for the execution of {\sc mal} statements, e.g. by establishing a connection using MonetDB’s profiling tool.
+The MonetDB kernel can be instructed to emit profiling events for the execution of {\sc mal} statements, e.g. by establishing a connection using MonetDB's profiling tool.
 % Every {\sc mal} function comes with two event records: one taken at the beginning and another upon completion of the operation.
 %The event record contains details on the arguments passed, their type and size.
 %%Wherever possible the arguments are linked with the underlying persistent column.
@@ -282,7 +286,7 @@ This information together with the \texttt{\small "size"} allows us to estimate 
 % 0.90 %         72 calls batcalc.-
 % 0.78 %         39 calls batcalc.dbl
 %\end{verb}
-%\caption{The top-20 {\sc mal} operators for TPCH}
+%\caption{The top-20 {\sc mal} operators for TPC-H}
 %\label{fig:tpch_instructions}
 %\end{figure}
 
@@ -297,7 +301,8 @@ Then the algorithm iterates over the {\sc mal} plan (i.e. the \texttt{\small mal
 At each iteration, it adds the memory footprint of this {\sc mal} statement (\texttt{\small i.mem\_fprint}) to the current total memory consumption (\texttt{\small curr\_mem}) and updates \texttt{\small max\_mem} if necessary.
 After that, it adjusts \texttt{\small curr\_mem} with the amount of memory that will be freed by this statement (\texttt{\small i.free\_size}). 
 \begin{verb}
-max_mem  = 0, curr_mem = 0 
+max_mem  = 0
+curr_mem = 0 
 for i in mal_statements:
   curr_mem += i.mem_fprint
   max_mem = max(max_mem, curr_mem)
@@ -305,7 +310,7 @@ for i in mal_statements:
 \end{verb}
 
 After the execution of the {\sc mal} plan, we update our memory footprint estimation model with the observed execution information.
-We initialise the estimation model with basic column statistics (\texttt{\small min}, \texttt{\small max}, \texttt{\small count}, etc.) that can be gathered using MonetDB’s \texttt{\small ANALYZE} command .
+We initialise the estimation model with basic column statistics (\texttt{\small min}, \texttt{\small max}, \texttt{\small count}, etc.) that can be gathered using MonetDB's \texttt{\small ANALYZE} command.
 
 The estimation model is built by dividing {\sc mal} instructions with similar functionality (most of them represent a relational operator each) into several groups and abstracting away their specific signatures.
 Currently, the model includes \texttildelow 10 groups.
@@ -314,7 +319,7 @@ Note that we only consider bulk operators here (i.e. taking columns as operands)
 
 \subsection{Load instructions}
 %\Skip\textbf{Data Loading Operators.}
-A \texttt{\small bind} instruction loads (or memory maps) a column into memory, thus the resturn size is the size of the column.
+A \texttt{\small bind} instruction loads (or memory maps) a column into memory, thus the return size is the size of the column.
 This is a worst case assumption, because in practice not all of the column needs to be loaded.
 %For example, if the column is sorted and we perform a range select using a binary search
 %then the size of the result determines the footprint.
@@ -360,21 +365,20 @@ The number of values in \texttt{\small extends} and \texttt{\small histo} is the
 Putting everything together, the total output size of a grouping operator is estimated as:
 \begin{verb}
 group.rsize = COUNT(arg1) * sizeof(OID) +
-  estimate_nr_groups(arg1) * (sizeof(OID) + sizeof(LNG))
+              estimate_nr_groups(arg1) * (sizeof(OID) + sizeof(LNG))
 \end{verb}
 
 \subsection{Set Operators}
 %\Skip\textbf{Set Operators.}
 For the set operators we mostly compute an upper bound of the result size using heuristics:
 \begin{verb}
-unionall.rsize = sizeof(arg1.datatype) * 
-  (COUNT(arg1) + COUNT(arg2))
-union.rsize = sizeof(arg1.datatype) *
-  (COUNT(DISTINCT arg1) + COUNT(DISTINCT arg2))
-ntsct.rsize = sizeof(arg1.datatype) *
-  MIN(COUNT(DISTINCT arg1) + COUNT(DISTINCT arg2))
-xcpt_all.size = sizeof(arg1.datatype) * COUNT(arg1)
-xcpt.size = sizeof(arg1.datatype) * COUNT(DISTINCT arg1)
+unionall.rsize = sizeof(arg1.datatype) * (COUNT(arg1) + COUNT(arg2))
+union.rsize    = sizeof(arg1.datatype) *
+                 (COUNT(DISTINCT arg1) + COUNT(DISTINCT arg2))
+ntsct.rsize    = sizeof(arg1.datatype) *
+                 MIN(COUNT(DISTINCT arg1) + COUNT(DISTINCT arg2))
+xcpt_all.size  = sizeof(arg1.datatype) * COUNT(arg1)
+xcpt.size      = sizeof(arg1.datatype) * COUNT(DISTINCT arg1)
 \end{verb}
 
 Both \texttt{\small UNION} and \texttt{\small UNION ALL} return a concatenation of their two input columns \texttt{\small arg1} and \texttt{\small arg2}, except that \texttt{\small UNION} eliminates the duplicates in its result.
@@ -446,7 +450,7 @@ The pseudo code is shown below:
 \begin{verb}
 extrap = 0
 for dict in kNN(dictionary, join, 5)
-  extrap += dict.cnt * (COUNT(join.col1) / COUNT(dict.col1)) * 
+  extrap += dict.cnt * (COUNT(join.col1) / COUNT(dict.col1)) *
                        (COUNT(join.col2) / COUNT(dict.col2))
 sel.rsize = extrap/5 * sizeof(OID) * 2
 \end{verb}
@@ -459,11 +463,11 @@ The full-blown version uses the same scheduling method as within the MonetDB cod
 \section{Evaluation}
 \label{sec:evaluation}
 In this section we discuss the results obtained with the {\sc malcolm} prototype.
-For our experiments we used both TPC-H and the air traffic benchmarks.
+For our experiments we used both TPC-H and the air traffic\footnote{\url{github.com/MonetDBSolutions/airtraffic-benchmark}} benchmarks.
 The former is the baseline against which most database systems are evaluated.
 Its major weakness is the uniform data distribution.
 Although TPC-H simplifies the analysis of the quality of a space predictor, it is not representative of real-life workloads.
-Therefore, we also use the air traffic benchmark\footnote{\url{github.com/MonetDBSolutions/airtraffic-benchmark}}, which consists of a single table with \textgreater 120M rows and 100 columns of flight information.
+Therefore, we also use the air traffic benchmark, which consists of a single table with \textgreater 120M rows and 100 columns of flight information.
 The data in this benchmark is skewed.
 
 \subsection{TPC-H}
@@ -472,7 +476,7 @@ The data in this benchmark is skewed.
 	\centering
 	%\includegraphics[height=1in,width=3in]{Figures/Q1.png}
 	%\includegraphics[height=1in,width=3in]{Figures/Q6.png}
-	\includegraphics[width=0.95\columnwidth]{Figures/tpch.pdf}
+	\includegraphics[width=0.95\columnwidth]{Figures/tpch-q1-q6.pdf}
 	\caption{TPC-H queries Q1 and Q6 prediction deviations
 		\label{fig:tpch-q1-q6}}
 \end{figure}
@@ -486,7 +490,7 @@ As a test set we used the original queries.
 Initial experiments led to the results such as shown in Figure~\ref{fig:tpch-q1-q6}, where the x-axis shows the number of training queries used and y-axis shows the deviation of the estimation from the actual footprint.
 Q1 is a simple large scan followed by an aggregation. The sole parameter is the value range.
 The experiment shows a steep learning curve, which can be attributed to the uniform distribution.
-However, it also results in a little over fitting.
+However, it also results in a little overfitting.
 Q6 is also mostly a simple scan and aggregate query, but here the number of tuples are less.
 This experiment shows that {\sc malcolm} takes much longer to reach an almost perfect prediction of the memory footprint.
 
@@ -533,19 +537,19 @@ Again we can observe both some under- and over-estimations, which all improve ov
 Albeit they take more queries to stabilise.
 %One immediate observation is that in this case it takes more queries to reach an optimal estimate.
 % One with a deviation close to zero.
-The graphs of Q04, Q15 and Q19 also illustrates how {\sc malcolm} not necessarily improve monotonic.
+The graphs of Q04, Q15 and Q19 also illustrates how {\sc malcolm} not necessarily improves monotonicly.
 This is most probably due to the actual query load.
 
 \begin{figure}[t!]
 	\centering
-	\includegraphics[height=2in,width=3in]{Figures/Q4-15.pdf}
+	\includegraphics[height=2in,width=3in]{Figures/airtraffic-q4-q15.pdf}
 	\caption{Air traffic queries 4 and 15
 		\label{fig:airtraffic-q4-q15}}
 \end{figure}
 
 \begin{figure}[t!]
 	\centering
-	\includegraphics[height=2in,width=3in]{Figures/Q10-19.pdf}
+	\includegraphics[height=2in,width=3in]{Figures/airtraffic-q10-q19.pdf}
 	\caption{Air traffic queries 10 and 19
 		\label{fig:airtraffic-q10-q19}}
 \end{figure}
@@ -573,9 +577,12 @@ In the near future, we plan to extend {\sc malcolm} to also look at the memory f
 %This should lead to a lower bound on the memory footprint at the cost of running slower.
 Both memory footprint and degree of parallelism enables users to optimise their systems based on costs or response times.
 
+
+% ensure same length columns on last page (might need two sub-sequent latex runs)
+\balance
+
 \section*{Acknowledgments}
-%\Skip\textbf{Acknowledgments}
-This research has received funding from the European Union’s Horizon 2020 research and innovation program under Grant Agreement no. 732366 (ACTiCLOUD).
+This research has received funding from the European Union's Horizon 2020 research and innovation program under Grant Agreement no. 732366 (ACTiCLOUD).
 \bibliography{IEEEabrv,refs}
 \bibliographystyle{IEEEtran}
 
