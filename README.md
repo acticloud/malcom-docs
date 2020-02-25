@@ -1,3 +1,6 @@
+# Acknowledgments
+This work has been funded by the European Unions Horizon 2020 research and innovation programme under Grant Agreement no. 732366 (ACTiCLOUD).
+
 # malcom-docs
 
 This little repo contains some documentation related stuff of MALCOM.
